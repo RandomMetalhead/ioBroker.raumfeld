@@ -66,42 +66,46 @@ class RaumfeldAdapter extends utils.Adapter {
         let o = await this.getObjectAsync(id);
         if (o.native.parameter) {
             this.log.info('state change - ' + o.native.parameter + ' - deviceUdn ' + o.native.deviceUdn + ' - value ' + state.val);
-            switch (o.native.parameter) {
-                case 'stop': {
-                    let mediaRenderer = raumkernel.managerDisposer.deviceManager.getVirtualMediaRenderer(o.native.deviceUdn);
-                    await mediaRenderer.stop();
-                    break;
-                }
-                case 'play': {
-                    let mediaRenderer = raumkernel.managerDisposer.deviceManager.getVirtualMediaRenderer(o.native.deviceUdn);
-                    await mediaRenderer.play();
-                    break;
-                }
-                case 'pause': {
-                    let mediaRenderer = raumkernel.managerDisposer.deviceManager.getVirtualMediaRenderer(o.native.deviceUdn);
-                    await mediaRenderer.pause();
-                    break;
-                }
-                case 'prev': {
-                    let mediaRenderer = raumkernel.managerDisposer.deviceManager.getVirtualMediaRenderer(o.native.deviceUdn);
-                    await mediaRenderer.prev();
-                    break;
-                }
-                case 'next': {
-                    let mediaRenderer = raumkernel.managerDisposer.deviceManager.getVirtualMediaRenderer(o.native.deviceUdn);
-                    await mediaRenderer.next();
-                    break;
-                }
-                case 'setMute': {
-                    let mediaRenderer = raumkernel.managerDisposer.deviceManager.getVirtualMediaRenderer(o.native.deviceUdn);
-                    await mediaRenderer.setMute(state.val);
-                    break;
-                }
-                case 'setVolume': {
-                    let mediaRenderer = raumkernel.managerDisposer.deviceManager.getVirtualMediaRenderer(o.native.deviceUdn);
-                    await mediaRenderer.setVolume(state.val);
-                    break;
-                }
+            try {
+                switch (o.native.parameter) {
+                           case 'stop': {
+                               let mediaRenderer = this._raumkernel.managerDisposer.deviceManager.getVirtualMediaRenderer(o.native.deviceUdn);
+                               await mediaRenderer.stop();
+                               break;
+                           }
+                           case 'play': {
+                               let mediaRenderer = this._raumkernel.managerDisposer.deviceManager.getVirtualMediaRenderer(o.native.deviceUdn);
+                               await mediaRenderer.play();
+                               break;
+                           }
+                           case 'pause': {
+                               let mediaRenderer = this._raumkernel.managerDisposer.deviceManager.getVirtualMediaRenderer(o.native.deviceUdn);
+                               await mediaRenderer.pause();
+                               break;
+                           }
+                           case 'prev': {
+                               let mediaRenderer = this._raumkernel.managerDisposer.deviceManager.getVirtualMediaRenderer(o.native.deviceUdn);
+                               await mediaRenderer.prev();
+                               break;
+                           }
+                           case 'next': {
+                               let mediaRenderer = this._raumkernel.managerDisposer.deviceManager.getVirtualMediaRenderer(o.native.deviceUdn);
+                               await mediaRenderer.next();
+                               break;
+                           }
+                           case 'setMute': {
+                               let mediaRenderer = this._raumkernel.managerDisposer.deviceManager.getVirtualMediaRenderer(o.native.deviceUdn);
+                               await mediaRenderer.setMute(state.val);
+                               break;
+                           }
+                           case 'setVolume': {
+                               let mediaRenderer = this._raumkernel.managerDisposer.deviceManager.getVirtualMediaRenderer(o.native.deviceUdn);
+                               await mediaRenderer.setVolume(state.val);
+                               break;
+                           }
+                       }
+            } catch (err) {
+                this.log.error("_stateChange - error - " + err);
             }
         }
     }
@@ -119,7 +123,7 @@ class RaumfeldAdapter extends utils.Adapter {
         //this._raumkernel.on("systemReady", this._systemReady.bind(this));
         this._raumkernel.on("mediaRendererRaumfeldAdded", this._mediaRendererRaumfeldAdded.bind(this));
         this._raumkernel.on("mediaRendererRaumfeldVirtualAdded", this._mediaRendererRaumfeldVirtualAdded.bind(this));
-        this._raumkernel.on("mediaServerRaumfeldAdded", this._mediaServerRaumfeldAdded.bind(this));
+	    //this._raumkernel.on("mediaServerRaumfeldAdded", this._mediaServerRaumfeldAdded.bind(this));
         this._raumkernel.on("rendererStateChanged", this._rendererStateChanged.bind(this));
 
         this.setState('info.connection', true, true);
@@ -134,6 +138,7 @@ class RaumfeldAdapter extends utils.Adapter {
     }
 
     async _mediaRendererRaumfeldAdded(deviceUdn, device) {
+        this.log.silly("_mediaRendererRaumfeldAdded");
         let promises = [];
         let name = deviceUdn;
         if (name.startsWith('uuid:'))
@@ -148,24 +153,34 @@ class RaumfeldAdapter extends utils.Adapter {
     }
 
     async _mediaRendererRaumfeldVirtualAdded(deviceUdn, device) {
+        this.log.silly("_mediaRendererRaumfeldVirtualAdded");
         let promises = [];
-        let name = this._getNameFromUdn(deviceUdn);
-        promises.push(this.setObjectNotExistsAsync('devices.virtual.' + name + '.info.name', { type: 'state', common: { name: 'name', type: 'string', role: 'info', read: true, write: false }, native: {} }));
-        promises.push(this.setObjectNotExistsAsync('devices.virtual.' + name + '.info.powerState', { type: 'state', common: { name: 'powerState', type: 'string', role: 'info', read: true, write: false }, native: {} }));
-        promises.push(this.setObjectNotExistsAsync('devices.virtual.' + name + '.info.transportState', { type: 'state', common: { name: 'transportState', type: 'string', role: 'info', read: true, write: false }, native: {} }));
-        promises.push(this.setObjectNotExistsAsync('devices.virtual.' + name + '.info.volume', { type: 'state', common: { name: 'volume', type: 'number', role: 'info', read: true, write: false }, native: {} }));
-        promises.push(...this._addMediaRendererControls(deviceUdn, device, 'virtual'));
-        await Promise.all(promises);
-        promises = [];
-        promises.push(this.setStateAsync('devices.virtual.' + name + '.info.name', device.name(), true));
-        await Promise.all(promises);
+        let roomString = device.roomName();
+        let rooms = roomString.split(",");
+
+        try {
+            for (let i in rooms){
+                promises.push(this.setObjectNotExistsAsync('devices.rooms.' + rooms[i] + '.info.name', { type: 'state', common: { name: 'name', type: 'string', role: 'info', read: true, write: false }, native: {} }));
+                promises.push(this.setObjectNotExistsAsync('devices.rooms.' + rooms[i] + '.info.powerState', { type: 'state', common: { name: 'powerState', type: 'string', role: 'info', read: true, write: false }, native: {} }));
+                promises.push(this.setObjectNotExistsAsync('devices.rooms.' + rooms[i] + '.info.transportState', { type: 'state', common: { name: 'transportState', type: 'string', role: 'info', read: true, write: false }, native: {} }));
+                promises.push(this.setObjectNotExistsAsync('devices.rooms.' + rooms[i] + '.info.volume', { type: 'state', common: { name: 'volume', type: 'number', role: 'info', read: true, write: false }, native: {} }));
+                await Promise.all(promises);
+                promises = [];
+                promises.push(this.setStateAsync('devices.rooms.' + rooms[i] + '.info.name', rooms[i], true));
+                await Promise.all(promises);
+            }
+        } catch (err) {
+            this.log.error("_mediaRendererRaumfeldVirtualAdded - error - " + err);
+        }
+
     }
 
     async _mediaServerRaumfeldAdded(deviceUdn, device) {
+        this.log.silly("_mediaServerRaumfeldAdded");
         let promises = [];
         let name = this._getNameFromUdn(deviceUdn);
-        promises.push(this.setObjectNotExistsAsync('devices.server.' + name + '.info.name', { type: 'state', common: { name: 'name', type: 'string', role: 'info', read: true, write: false }, native: {} }));
-        promises.push(...this._addMediaRendererControls(deviceUdn, device, 'virtual'));
+	    promises.push(this.setObjectNotExistsAsync('devices.server.' + name + '.info.name', { type: 'state', common: { name: 'name', type: 'string', role: 'info', read: true, write: false }, native: {} }));
+	    promises.push(...this._addMediaRendererControls(deviceUdn, device, 'virtual'));
         await Promise.all(promises);
         promises = [];
         promises.push(this.setStateAsync('devices.server.' + name + '.info.name', device.name(), true));
@@ -173,6 +188,7 @@ class RaumfeldAdapter extends utils.Adapter {
     }
 
     _addMediaRendererControls(deviceUdn, device, type) {
+        this.log.silly("_addMediaRendererControls");
         let promises = [];
         let name = this._getNameFromUdn(deviceUdn);
         promises.push(this.setObjectNotExistsAsync('devices.' + type + '.' + name + '.info.name', { type: 'state', common: { name: 'name', type: 'string', role: 'info', read: true, write: false }, native: {} }));
@@ -201,11 +217,14 @@ class RaumfeldAdapter extends utils.Adapter {
 
             for (let i in rendererState.rooms){
                 let room = rendererState.rooms[i];
-                let name = this._getNameFromUdn(room.roomUDN);
-                promises.push(this.setStateAsync('devices.virtual.' + name + '.info.powerState', room.PowerState, true));
-                promises.push(this.setStateAsync('devices.virtual.' + name + '.info.transportState', room.TransportState, true));
-                promises.push(this.setStateAsync('devices.virtual.' + name + '.info.volume', room.Volume, true));
-            }
+                let name = room.name;
+		        promises.push(this.setStateAsync('devices.rooms.' + name + '.info.powerState', room.PowerState, true));
+                promises.push(this.setStateAsync('devices.rooms.' + name + '.info.transportState', room.TransportState, true));
+                promises.push(this.setStateAsync('devices.rooms.' + name + '.info.volume', room.Volume, true));
+                promises.push(...this._addMediaRendererControls(name, name, 'virtual'));
+	        }
+
+	        this.subscribeStates("devices.*")
 
             return promises;
         } catch (err) {

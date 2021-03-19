@@ -1,6 +1,6 @@
 {
   "name": "iobroker.raumfeld",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "ioBroker Adapter to use raumfeld devices",
   "author": {
     "name": "jogibear9988",
@@ -8,8 +8,8 @@
   },
   "contributors": [
     {
-      "name": "jogibear9988",
-      "email": "jochen.kuehner@gmx.de"
+      "name": "Marcus Thormählen",
+      "email": "marcus@schlotterburg.de"
     }
   ],
   "homepage": "https://github.com/iobroker-community-adapters/ioBroker.raumfeld",
